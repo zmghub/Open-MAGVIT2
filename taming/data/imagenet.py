@@ -134,7 +134,7 @@ class ImageNetTrain(ImageNetBase):
     def _prepare(self):
         self.random_crop = retrieve(self.config, "ImageNetTrain/random_crop",
                                     default=True)
-        cachedir = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("../../data/imagenet")) #specfy the path
+        cachedir = os.environ.get("IMAGENET_ROOT", os.path.expanduser("../../data/imagenet")) #specfy the path
         self.root = os.path.join(cachedir, self.NAME)
         self.datadir = self.root
         if self.config["subset"] is not None: # for training in subset
@@ -194,7 +194,7 @@ class ImageNetValidation(ImageNetBase):
     def _prepare(self):
         self.random_crop = retrieve(self.config, "ImageNetValidation/random_crop",
                                     default=False)
-        cachedir = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("../../data/imagenet"))
+        cachedir = os.environ.get("IMAGENET_ROOT", os.path.expanduser("../../data/imagenet"))
         self.root = os.path.join(cachedir, self.NAME)
         self.datadir = self.root
         if self.config["subset"] is not None: # for debugging
@@ -245,6 +245,44 @@ class ImageNetValidation(ImageNetBase):
                 f.write(filelist)
 
             bdu.mark_prepared(self.root)
+
+    def _load(self):
+        with open(self.txt_filelist, "r") as f:
+            self.relpaths = f.read().splitlines()
+            l1 = len(self.relpaths)
+            self.relpaths = self._filter_relpaths(self.relpaths)
+            print("Removed {} files from filelist during filtering.".format(l1 - len(self.relpaths)))
+
+        with open(os.path.join(self.root, "val_img2dir.txt"), "r") as f:
+            img2dir = f.read().splitlines()
+            self.img2dir = {}
+            for i in img2dir:
+                tmp = i.strip().split()
+                self.img2dir[tmp[0]] = tmp[1]
+
+        self.synsets = sorted([self.img2dir[p] for p in self.relpaths])
+        self.abspaths = [os.path.join(self.datadir, p) for p in self.relpaths]
+
+        unique_synsets = np.unique(self.synsets)
+        class_dict = dict((synset, i) for i, synset in enumerate(unique_synsets))
+        self.class_labels = [class_dict[s] for s in self.synsets]
+
+        with open(self.human_dict, "r") as f:
+            human_dict = f.read().splitlines()
+            human_dict = dict(line.split(maxsplit=1) for line in human_dict)
+
+        self.human_labels = [human_dict[s] for s in self.synsets]
+
+        labels = {
+            "relpath": np.array(self.relpaths),
+            "synsets": np.array(self.synsets),
+            "class_label": np.array(self.class_labels),
+            "human_label": np.array(self.human_labels),
+        }
+        self.data = ImagePaths(self.abspaths,
+                               labels=labels,
+                               size=retrieve(self.config, "size", default=0),
+                               random_crop=self.random_crop)
 
 
 def get_preprocessor(size=None, random_crop=False, additional_targets=None,

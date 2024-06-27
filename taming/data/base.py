@@ -1,9 +1,17 @@
 import bisect
+import io
 import numpy as np
 import albumentations
 from PIL import Image
 from torch.utils.data import Dataset, ConcatDataset
 import torchvision.transforms as T
+from obs import ObsClient
+
+#  --- spider-cct数据
+host = 'obs.cn-north-4.myhuaweicloud.com/'
+bucket = 'spider-cct'
+ak = "0OY8DYV9MNYU2HW2RPUW"
+sk = "jLPaP4vvy554nl1FjkwrQVufgJVTdVTdohpJ8ozG"
 
 class ConcatDatasetWithIndex(ConcatDataset):
     """Modified from original pytorch code to return dataset idx"""
@@ -26,6 +34,13 @@ class ImagePaths(Dataset):
 
         self.labels = dict() if labels is None else labels
         self.labels["file_path_"] = paths
+        self.client = None
+        if bucket in paths[0]:
+            self.client = ObsClient(access_key_id=ak,
+                   secret_access_key=sk,
+                   server=host.strip("/"),
+                   timeout=1200)
+            print(f"[INFO] obs client init success.")
         self._length = len(paths)
 
         if self.size is not None and self.size > 0:
@@ -42,7 +57,22 @@ class ImagePaths(Dataset):
         return self._length
 
     def preprocess_image(self, image_path):
-        image = Image.open(image_path)
+        if bucket in image_path:
+            if self.client is None:
+                self.client = ObsClient(access_key_id=ak,
+                       secret_access_key=sk,
+                       server=host.strip("/"),
+                       timeout=1200)
+            image_path = image_path.replace("%2F", "/")
+            resp = self.client.getObject(bucket, image_path[image_path.rfind(host) + len(host):])
+            if resp.status < 300:
+                ctx = resp.body.response.read()
+                img_str = io.BytesIO(ctx)
+            else:
+                raise ValueError(f"load image error `http://` or `https://`, and {image_path} is not a valid path")
+        else:
+            img_str = image_path
+        image = Image.open(img_str)
         if not image.mode == "RGB":
             image = image.convert("RGB")
         image = self.preprocessor(image)
@@ -52,7 +82,14 @@ class ImagePaths(Dataset):
     
     def __getitem__(self, i):
         example = dict()
-        example["image"] = self.preprocess_image(self.labels["file_path_"][i])
+        flag = False
+        while not flag:
+            try:
+                example["image"] = self.preprocess_image(self.labels["file_path_"][i])
+                flag = True
+            except Exception as e:
+                print(f"[WARN] err read obs 4: {self.labels['file_path_'][i]}")
+                i = np.random.randint(0, self.__len__())
         for k in self.labels:
             example[k] = self.labels[k][i]
         return example

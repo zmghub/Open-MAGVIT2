@@ -82,7 +82,7 @@ class Encoder(nn.Module):
             
             down = nn.Module()
             down.block = block
-            if i_level < self.num_blocks - 1:
+            if i_level < self.num_blocks - 2:
                 down.downsample = nn.Conv2d(block_out, block_out, kernel_size=(3, 3), stride=(2, 2), padding=1)
 
             self.down.append(down)
@@ -94,6 +94,8 @@ class Encoder(nn.Module):
         
         ### end
         self.norm_out = nn.GroupNorm(32, block_out, eps=1e-6)
+        if double_z:
+            z_channels *= 2
         self.conv_out = nn.Conv2d(block_out, z_channels, kernel_size=(1, 1))
             
     def forward(self, x):
@@ -104,7 +106,7 @@ class Encoder(nn.Module):
             for i_block in range(self.num_res_blocks):
                 x = self.down[i_level].block[i_block](x)
             
-            if i_level <  self.num_blocks - 1:
+            if i_level <  self.num_blocks - 2:
                 x = self.down[i_level].downsample(x)
         
         ## mid 
@@ -150,7 +152,7 @@ class Decoder(nn.Module):
             
             up = nn.Module()
             up.block = block
-            if i_level > 0:
+            if i_level > 1:
                 up.upsample = Upsampler(block_in)
             self.up.insert(0, up)
         
@@ -171,7 +173,7 @@ class Decoder(nn.Module):
             for i_block in range(self.num_res_blocks):
                 z = self.up[i_level].block[i_block](z)
             
-            if i_level > 0:
+            if i_level > 1:
                 z = self.up[i_level].upsample(z)
         
         z = self.norm_out(z)
