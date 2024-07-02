@@ -62,7 +62,10 @@ class ImageNetTrain(Dataset):
         for data in results:
             self.data += data
 
-        random.shuffle(self.data)
+        if self.sub_dir == "train":
+            random.shuffle(self.data)
+        else:
+            self.data = sorted(self.data)
 
         print(f"[info]{self.sub_dir} total data: {len(self.data)}")
 
@@ -70,7 +73,7 @@ class ImageNetTrain(Dataset):
 
         self.data = ImagePaths(self.img_urls,
                                size=retrieve(self.config, "size", default=0),
-                               random_crop=True)
+                               random_crop=True if self.sub_dir == "train" else False)
         
 
     def read_csv_data(self, file_list, overall_fieldnames, exclude_content="cn-north-9", url_key="clip_cloud_url",

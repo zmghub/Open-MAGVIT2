@@ -25,32 +25,31 @@ trainer:
       name:
 
 model:
-  class_path: taming.models.klgan.KLModel
+  class_path: taming.svd.autoencoder_vq_temporal_decoder.AutoencoderVQTemporalDecoder
   init_args:
-    ddconfig:
-      double_z: True
-      z_channels: 4
-      resolution: 128
-      in_channels: 3
-      out_ch: 3
-      ch: 128
-      ch_mult: [1,1,2,2,4]  # num_down = len(ch_mult)-1
-      num_res_blocks: 2
-
-    lossconfig:
-      target: taming.modules.losses.klperceptual.KLLPIPSWithDiscriminator
+    block_out_channels:
+      - 128
+      - 256
+      - 512
+      - 512
+    down_block_types:
+      - DownEncoderBlock2D
+      - DownEncoderBlock2D
+      - DownEncoderBlock2D
+      - DownEncoderBlock2D
+    latent_channels: 18
+    layers_per_block: 2
+    regularizer_config:
+      target: taming.modules.vqvae.lookup_free_quantize.LFQ
       params:
-        disc_conditional: False
-        disc_in_channels: 3
-        disc_start: 0 # from 0 epoch
-        disc_weight: 0.8
-        gen_loss_weight: 0.1
-        lecam_loss_weight: 0.005
-        kl_weight: 0.000001
-
-    learning_rate: 1e-4
-    scheduler_type: "None"
-    use_ema: True
+        codebook_size: 262144
+        num_codebooks: 1
+        dim: 18
+        sample_minimization_weight: 1
+        batch_maximization_weight: 1
+    enable_xformers: true
+    enable_gradient_checkpointing: true
+    n_embed: 262144
 
 data:
   class_path: main.DataModuleFromConfig

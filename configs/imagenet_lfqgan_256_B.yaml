@@ -2,8 +2,8 @@ seed_everything: true
 trainer:
   accelerator: gpu
   strategy: ddp_find_unused_parameters_true
-  devices: 1
-  num_nodes: 1
+  devices: 8
+  num_nodes: 4
   precision: 16-mixed
   max_epochs: 150
   check_val_every_n_epoch: 1
@@ -12,7 +12,7 @@ trainer:
   callbacks:
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
-        dirpath: "checkpoints/vqgan/test"
+        dirpath: "/data/sfs-hpc-mtlab-xm-training/wy42/training/open-magvit2/lfqgan/checkpoints/20240628"
         save_top_k: -1 # save all checkpoints
     - class_path: lightning.pytorch.callbacks.LearningRateMonitor
       init_args:
@@ -20,7 +20,7 @@ trainer:
   logger:
     class_path: lightning.pytorch.loggers.TensorBoardLogger
     init_args:
-      save_dir: "results/vqgan/"
+      save_dir: "/data/sfs-hpc-mtlab-xm-training/wy42/training/open-magvit2/lfqgan/results/20240628"
       version: "test"
       name:
 
@@ -62,7 +62,7 @@ model:
 data:
   class_path: main.DataModuleFromConfig
   init_args:
-    batch_size: 8
+    batch_size: 6
     num_workers: 16
     train:
       target: taming.data.imagenet_obs.ImageNetTrain

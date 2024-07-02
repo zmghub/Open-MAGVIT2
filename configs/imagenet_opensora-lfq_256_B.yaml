@@ -25,32 +25,48 @@ trainer:
       name:
 
 model:
-  class_path: taming.models.klgan.KLModel
+  class_path: taming.opensora_2d.vae.VideoVQVAEPipeline
   init_args:
-    ddconfig:
-      double_z: True
-      z_channels: 4
-      resolution: 128
-      in_channels: 3
-      out_ch: 3
-      ch: 128
-      ch_mult: [1,1,2,2,4]  # num_down = len(ch_mult)-1
-      num_res_blocks: 2
-
-    lossconfig:
-      target: taming.modules.losses.klperceptual.KLLPIPSWithDiscriminator
+    scale:
+    - 3.85
+    - 2.32
+    - 2.33
+    - 3.06
+    shift:
+    - -0.1
+    - 0.34
+    - 0.27
+    - 0.98
+    vae_2d_config:
+      target: taming.opensora_2d.vae.VideoAutoencoderKL
       params:
-        disc_conditional: False
-        disc_in_channels: 3
-        disc_start: 0 # from 0 epoch
-        disc_weight: 0.8
-        gen_loss_weight: 0.1
-        lecam_loss_weight: 0.005
-        kl_weight: 0.000001
-
-    learning_rate: 1e-4
-    scheduler_type: "None"
-    use_ema: True
+        from_pretrained: /mnt/new_sfs_turbo/models/pixart_sigma_sdxlvae_T5_diffusers
+        subfolder: vae
+        local_files_only: true
+    vae_temporal_config:
+      target: taming.opensora_2d.vae_temporal.VQVAE_Image
+      params:
+        in_out_channels: 4
+        latent_embed_dim: 18
+        embed_dim: 18
+        filters: 128
+        num_res_blocks: 4
+        channel_multipliers:
+        - 1
+        - 2
+        - 2
+        - 4
+        temporal_downsample:
+        - false
+        - true
+        - true
+    lfq_config:
+      target: taming.opensora_2d.lookup_free_quantization.LFQ
+      params:
+        codebook_size: 262144
+        num_codebooks: 1
+        sample_minimization_weight: 1
+        batch_maximization_weight: 1
 
 data:
   class_path: main.DataModuleFromConfig

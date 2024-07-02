@@ -10,9 +10,9 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": "fit --config configs/imagenet_lfqgan_256_B.yaml",
+            "args": "--config_file configs/imagenet_opensora-lfq_256_B.yaml --ckpt_path /mnt/new_sfs_turbo/hyy/training/opensora_2d/20240621_total_params_wo_lfq_loss/2024-06-21T15-16-58/checkpoint-00960000.pth --image_size 256 --image_num 10 --visualize_dir ../training/opensora/wo_lfq/vis",
             "justMyCode": false,
-            "env": {"CUDA_VISIBLE_DEVICES": "7", "IMAGENET_ROOT": "/mnt/new_sfs_turbo/lsh2/train_projects/data/train_txt_imagenet"}
+            "env": {"SVD_FLAG": "true", "CUDA_VISIBLE_DEVICES": "2", "IMAGENET_ROOT": "/mnt/new_sfs_turbo/lsh2/train_projects/data/train_txt_imagenet"}
         }
     ]
 }

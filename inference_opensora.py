@@ -18,7 +18,7 @@ from taming.svd.autoencoder_kl_temporal_decoder import AutoencoderKLTemporalDeco
 from taming.svd.autoencoder_vq_temporal_decoder import AutoencoderVQTemporalDecoder
 import argparse
 
-from evaluation import load_vqgan_new, instantiate_from_config, custom_to_pil, custom_to_pil_svd
+from evaluation_opensora import load_vqgan_new, instantiate_from_config, custom_to_pil, custom_to_pil_svd
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -58,17 +58,7 @@ def main(args):
          images = batch["image"].permute(0, 3, 1, 2).to(DEVICE)
 
          count += images.shape[0]
-         if model.use_ema:
-               with model.ema_scope():
-                  if isinstance(model, VQModel):
-                     reconstructed_images, _, _ = model(images)
-                  elif isinstance(model, KLModel):
-                     reconstructed_images, _ = model(images)
-         else:
-            if isinstance(model, AutoencoderKLTemporalDecoder):
-               reconstructed_images, _ = model(images)
-            elif isinstance(model, AutoencoderVQTemporalDecoder):
-               reconstructed_images, _, _ = model(images)
+         reconstructed_images, _, _, indices, _ = model(images)
                   
          
          image = images[0]
