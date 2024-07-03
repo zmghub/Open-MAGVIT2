@@ -12,7 +12,7 @@ from diffusers.models.modeling_utils import ModelMixin
 from diffusers.models.autoencoders.vae import Encoder as Encoder2D
 from diffusers.models.autoencoders.autoencoder_kl_temporal_decoder import TemporalDecoder as TemporalDecoder2D
 
-from .attention import AttentionProcessor, XFormersAttnProcessor
+from .attention import AttentionProcessor, XFormersAttnProcessor, is_xformers_available
 from .causalconv import CausalConv3d
 from .vae import Encoder, TemporalDecoder
 from main import instantiate_from_config
@@ -130,7 +130,7 @@ class AutoencoderVQTemporalDecoder(ModelMixin, ConfigMixin):
             #     state_dict = state_dict["model"]
             # self._load_pretrained_model(self, state_dict, None, pretrained_model_name_or_path=pretrained_ckpt, ignore_mismatched_sizes=True)
 
-        if enable_xformers:
+        if enable_xformers and is_xformers_available():
             if video_mode:
                 self.set_attn_processor(XFormersAttnProcessor())
             else:

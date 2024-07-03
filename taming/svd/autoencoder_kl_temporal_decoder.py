@@ -1,6 +1,6 @@
 import torch
 from diffusers.models.autoencoders.autoencoder_kl_temporal_decoder import AutoencoderKLTemporalDecoder as BaseVAE
-from diffusers.models.attention_processor import XFormersAttnProcessor
+from diffusers.models.attention_processor import XFormersAttnProcessor, is_xformers_available
 
 from main import instantiate_from_config
 
@@ -36,7 +36,7 @@ class AutoencoderKLTemporalDecoder(BaseVAE):
             #     state_dict = state_dict["model"]
             # self._load_pretrained_model(self, state_dict, None, pretrained_model_name_or_path=pretrained_ckpt, ignore_mismatched_sizes=True)
 
-        if enable_xformers:
+        if enable_xformers and is_xformers_available():
             self.set_attn_processor(XFormersAttnProcessor())
         if enable_gradient_checkpointing:
             self.enable_gradient_checkpointing()
