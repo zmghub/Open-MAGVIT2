@@ -56,6 +56,9 @@ def load_vqgan_new(config, ckpt_path=None, is_gumbel=False):
     if 'model' in sd:
       sd = sd["model"]
     missing, unexpected = model.load_state_dict(sd, strict=True)
+    print(f"[Info] Load model weight from {ckpt_path}")
+    print(f"[Info] Missing keys: {missing}")
+    print(f"[Info] Unexpected keys: {unexpected}")
   return model.eval()
 
 

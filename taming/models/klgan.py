@@ -38,7 +38,8 @@ class KLModel(L.LightningModule):
         ddconfig["double_z"] = True
         self.encoder = Encoder(**ddconfig)
         self.decoder = Decoder(**ddconfig)
-        self.loss = instantiate_from_config(lossconfig)
+        if lossconfig is not None:
+            self.loss = instantiate_from_config(lossconfig)
         self.quantize = DiagonalGaussianRegularizer()
         self.use_ema = use_ema
         self.stage = stage

@@ -42,7 +42,8 @@ class VQModel(L.LightningModule):
         self.image_key = image_key
         self.encoder = Encoder(**ddconfig)
         self.decoder = Decoder(**ddconfig)
-        self.loss = instantiate_from_config(lossconfig)
+        if lossconfig is not None:
+            self.loss = instantiate_from_config(lossconfig)
         self.quantize = LFQ(dim=embed_dim, codebook_size=n_embed, 
                             sample_minimization_weight=sample_minimization_weight, 
                             batch_maximization_weight=batch_maximization_weight,
