@@ -42,14 +42,16 @@ class AutoencoderKLTemporalDecoder(BaseVAE):
             self.enable_gradient_checkpointing()
             
     
-    def encode(self, x):
+    def encode(self, x, sample_posterior=True):
         h = self.encoder(x)
         h = self.quant_conv(h)
-        quant, kl_loss = self.regularization(h)
+        quant, kl_loss = self.regularization(h, sample=sample_posterior)
         ### using token factorization the info is a tuple (each for embedding)
         return quant, kl_loss
     
     def decode(self, *args, **kwargs):
+        if kwargs.get("num_frames", None) is None:
+            kwargs["num_frames"] = 1
         dec = super().decode(*args, **kwargs)
         return dec.sample
 
@@ -57,10 +59,11 @@ class AutoencoderKLTemporalDecoder(BaseVAE):
             self,
             sample: torch.FloatTensor = None,
             num_frames: int = 1,
+            sample_posterior: bool = True,
             return_reg_log: bool = True,
             **kwargs
     ):
-        z, kl_loss = self.encode(sample)
+        z, kl_loss = self.encode(sample, sample_posterior=sample_posterior)
 
         dec = self.decode(z, num_frames=num_frames)
 

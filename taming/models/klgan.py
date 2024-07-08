@@ -117,9 +117,9 @@ class KLModel(L.LightningModule):
             missing_keys, unexpected_keys = self.load_state_dict(sd, strict=False)
         print(f"Restored from {path}")
 
-    def encode(self, x):
+    def encode(self, x, sample_posterior=True):
         h = self.encoder(x)
-        quant, kl_loss = self.quantize(h)
+        quant, kl_loss = self.quantize(h, sample=sample_posterior)
         ### using token factorization the info is a tuple (each for embedding)
         return quant, kl_loss
 
@@ -127,8 +127,8 @@ class KLModel(L.LightningModule):
         dec = self.decoder(quant)
         return dec
 
-    def forward(self, input):
-        quant, kl_loss = self.encode(input)
+    def forward(self, input, sample_posterior=True):
+        quant, kl_loss = self.encode(input, sample_posterior=sample_posterior)
         dec = self.decode(quant)
         return dec, kl_loss
 

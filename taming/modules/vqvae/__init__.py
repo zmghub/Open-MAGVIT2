@@ -14,11 +14,11 @@ class DiagonalGaussianRegularizer(AbstractRegularizer):
     def get_trainable_parameters(self) -> Any:
         yield from ()
 
-    def forward(self, z: torch.Tensor, loss_key="kl_loss", log_dict=None) -> Tuple[torch.Tensor, dict]:
+    def forward(self, z: torch.Tensor, loss_key="kl_loss", log_dict=None, sample=True) -> Tuple[torch.Tensor, dict]:
         if log_dict is None:
             log_dict = dict()
         posterior = DiagonalGaussianDistribution(z)
-        if self.sample:
+        if self.sample and sample:
             z = posterior.sample()
         else:
             z = posterior.mode()
