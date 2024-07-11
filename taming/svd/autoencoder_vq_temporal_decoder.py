@@ -18,6 +18,25 @@ from .vae import Encoder, TemporalDecoder
 from main import instantiate_from_config
 
 
+def add_and_remove_time_dim(func):
+    def wrapper(self, x, *args, **kwargs):
+        need_remove_time_dim = False
+        if self.video_mode and x.dim() == 4:
+            x = x.unsqueeze(2)
+            need_remove_time_dim = True
+        
+        result = func(self, x, *args, **kwargs)
+        result_extra = ()
+        if isinstance(result, (tuple, list)):
+            result_extra = result[1:]
+            result = result[0]
+        if need_remove_time_dim:
+            result = result.squeeze(2)
+        result = (result, *result_extra)
+        return result
+    
+    return wrapper
+
 
 def get_model_weight(state_dict, pretrained):
     pretrained = {key: value for key, value in pretrained.items() if
@@ -223,12 +242,20 @@ class AutoencoderVQTemporalDecoder(ModelMixin, ConfigMixin):
         if self._supports_gradient_checkpointing:
             self.apply(partial(self._set_gradient_checkpointing, value=False))
 
+    @add_and_remove_time_dim
     @apply_forward_hook
     def encode(self, x: torch.FloatTensor):
         h = self.encoder(x)
         h = self.quant_conv(h)
         (quant, emb_loss, info), loss_breakdown = self.regularization(h, return_loss_breakdown=True)
         return quant, emb_loss, info, loss_breakdown
+    
+    @add_and_remove_time_dim
+    @apply_forward_hook
+    def encode_wo_reg(self, x: torch.FloatTensor):
+        h = self.encoder(x)
+        h = self.quant_conv(h)
+        return (h, )
 
     @apply_forward_hook
     def decode(
