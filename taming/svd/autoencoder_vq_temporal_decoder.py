@@ -37,6 +37,20 @@ def add_and_remove_time_dim(func):
     
     return wrapper
 
+def add_and_remove_time_dim_decode(func):
+    def wrapper(self, x, *args, **kwargs):
+        need_remove_time_dim = False
+        if self.video_mode and x.dim() == 4:
+            x = x.unsqueeze(2)
+            need_remove_time_dim = True
+        
+        result = func(self, x, *args, **kwargs)
+        if need_remove_time_dim:
+            result = result.squeeze(2)
+        return result
+    
+    return wrapper
+
 
 def get_model_weight(state_dict, pretrained):
     pretrained = {key: value for key, value in pretrained.items() if
@@ -257,6 +271,7 @@ class AutoencoderVQTemporalDecoder(ModelMixin, ConfigMixin):
         h = self.quant_conv(h)
         return (h, )
 
+    @add_and_remove_time_dim_decode
     @apply_forward_hook
     def decode(
         self,
