@@ -22,8 +22,6 @@ from taming.models.lfqgan import VQModel
 from taming.models.klgan import KLModel
 from taming.svd.autoencoder_kl_temporal_decoder import AutoencoderKLTemporalDecoder
 from taming.svd.autoencoder_vq_temporal_decoder import AutoencoderVQTemporalDecoder
-from diffusers.models import AutoencoderKL
-from taming.sdxl.autoencoder_kl import AutoencoderKL as AutoencoderKL_sdxl
 from metrics.inception import InceptionV3
 import lpips
 from skimage.metrics import peak_signal_noise_ratio as psnr_loss
@@ -122,6 +120,17 @@ def main(args):
       codebook_size = configs.model.init_args.n_embed
     elif isinstance(model, (KLModel, AutoencoderKLTemporalDecoder)):
       codebook_size = 1
+
+    if args.visualize_dir is not None:
+      visualize_dir = args.visualize_dir
+      visualize_version = configs.trainer.logger.init_args.version
+      visualize_original = os.path.join(visualize_dir, visualize_version, "original_{}".format(args.image_size))
+      visualize_rec = os.path.join(visualize_dir, visualize_version, "rec_{}".format(args.image_size))
+      if not os.path.exists(visualize_original):
+        os.makedirs(visualize_original, exist_ok=True)
+    
+      if not os.path.exists(visualize_rec):
+        os.makedirs(visualize_rec, exist_ok=True)
     
     #usage
     usage = {}
@@ -158,31 +167,26 @@ def main(args):
     num_images = 0
     num_iter = 0
     custom_to_01_fn = custom_to_01_svd if os.getenv("SVD_FLAG", "false").lower() == "true" else custom_to_01
+    custom_to_pil_fn = custom_to_pil_svd if os.getenv("SVD_FLAG", "false").lower() == "true" else custom_to_pil
     with torch.no_grad():
         for batch in tqdm(dataset._val_dataloader()):
             images = batch["image"].permute(0, 3, 1, 2).to(DEVICE)
             num_images += images.shape[0]
+            images = images.unsqueeze(2)
 
-            if isinstance(model, (VQModel, AutoencoderVQTemporalDecoder)):
-              if model.use_ema:
-                  with model.ema_scope():
-                      quant, diff, indices, _ = model.encode(images)
-                      reconstructed_images = model.decode(quant)
-              else:
-                quant, diff, indices, _ = model.encode(images)
-                reconstructed_images = model.decode(quant)
-              ### usage
-              for index in indices:
-                usage[index.item()] += 1
+            quant, diff, indices, _ = model.encode(images)
+            reconstructed_images = model.decode(quant)
 
-            elif isinstance(model, (KLModel, AutoencoderKLTemporalDecoder)):
-              if model.use_ema:
-                  with model.ema_scope():
-                      quant, diff = model.encode(images)
-                      reconstructed_images = model.decode(quant)
-              else:
-                quant, diff = model.encode(images)
-                reconstructed_images = model.decode(quant)
+            images = images.squeeze(2)
+            reconstructed_images = reconstructed_images.squeeze(2)
+            if args.visualize_dir is not None and num_iter < 50:
+              image_save = custom_to_pil_fn(images[0])
+              reconstructed_image_save = custom_to_pil_fn(reconstructed_images[0])
+              image_save.save(os.path.join(visualize_original, "{}.png".format(num_iter)))
+              reconstructed_image_save.save(os.path.join(visualize_rec, "{}.png".format(num_iter)))
+            ### usage
+            for index in indices:
+              usage[index.item()] += 1
 
             images = custom_to_01_fn(images)
             reconstructed_images = custom_to_01_fn(reconstructed_images)
@@ -251,6 +255,7 @@ def get_args():
    parser.add_argument("--ckpt_path", required=True, type=str)
    parser.add_argument("--image_size", default=256, type=int)
    parser.add_argument("--batch_size", default=8, type=int)
+   parser.add_argument("--visualize_dir", type=str, default=None)
 
    return parser.parse_args()
 

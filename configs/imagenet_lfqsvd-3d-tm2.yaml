@@ -1,0 +1,91 @@
+seed_everything: true
+trainer:
+  accelerator: gpu
+  strategy: ddp_find_unused_parameters_true
+  devices: 8
+  num_nodes: 4
+  precision: 16-mixed
+  max_epochs: 150
+  check_val_every_n_epoch: 1
+  num_sanity_val_steps: 0
+  log_every_n_steps: 100
+  callbacks:
+    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
+      init_args:
+        dirpath: "/data/sfs-hpc-mtlab-xm-training/wy42/training/open-magvit2/klgan/checkpoints/20240628"
+        save_top_k: -1 # save all checkpoints
+    - class_path: lightning.pytorch.callbacks.LearningRateMonitor
+      init_args:
+        logging_interval: step
+  logger:
+    class_path: lightning.pytorch.loggers.TensorBoardLogger
+    init_args:
+      save_dir: "/data/sfs-hpc-mtlab-xm-training/wy42/training/open-magvit2/klgan/results/20240628"
+      version: "test"
+      name:
+
+model:
+  class_path: taming.svd.autoencoder_vq_temporal_decoder.AutoencoderVQTemporalDecoder
+  init_args:
+    video_mode: true
+    block_out_channels:
+      - 128
+      - 256
+      - 512
+      - 512
+    down_block_types:
+      - DownEncoderBlock3D
+      - DownEncoderBlock3D
+      - DownEncoderBlock3D
+      - DownEncoderBlock3D
+    latent_channels: 18
+    layers_per_block: 2
+    temporal_downsample:
+      - false
+      - false
+      - false
+      - true
+    temporal_upsample:
+      - true
+      - false
+      - false
+      - false
+    temporal_attention: false
+    padding_mode: zeros
+    regularizer_config:
+      target: taming.modules.vqvae.lookup_free_quantize.LFQ
+      params:
+        codebook_size: 262144
+        num_codebooks: 1
+        dim: 18
+        sample_minimization_weight: 1
+        batch_maximization_weight: 1
+    enable_xformers: true
+    enable_gradient_checkpointing: true
+    n_embed: 262144
+
+data:
+  class_path: main.DataModuleFromConfig
+  init_args:
+    batch_size: 6
+    num_workers: 16
+    train:
+      target: taming.data.imagenet_obs.ImageNetTrain
+      params:
+        config:
+          size: 256
+          subset:
+    validation:
+      target: taming.data.imagenet_obs.ImageNetValidation
+      params:
+        config:
+          size: 256
+          subset:
+    test:
+      target: taming.data.imagenet_obs.ImageNetValidation
+      params:
+        config:
+          size: 256
+          subset:
+
+ckpt_path: null # to resume
